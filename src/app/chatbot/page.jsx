@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { fetchChatSessions, sendChatMessageMock } from "@/services/api";
+import { fetchChatSessions, fetchChatHistory, sendChatMessageMock } from "@/services/api";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,25 @@ export default function ChatbotPlaygroundPage() {
   }, []);
 
   useEffect(() => {
+    const loadHistory = async () => {
+      if (!activeSession) return;
+      const history = await fetchChatHistory(activeSession);
+      
+      if (history && history.length > 0) {
+        setMessages(history.map(msg => ({
+          id: msg.id,
+          role: msg.role === 'assistant' ? 'bot' : msg.role,
+          content: msg.content,
+          sources: msg.sources || []
+        })));
+      } else {
+        setMessages([{ id: 'welcome', role: 'bot', content: 'Hello! I am Dexra Assist. How can I help you today?' }]);
+      }
+    };
+    loadHistory();
+  }, [activeSession]);
+
+  useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
@@ -43,8 +62,16 @@ export default function ChatbotPlaygroundPage() {
     setIsTyping(true);
 
     try {
-      const botMessage = await sendChatMessageMock(userMessage.content);
+      const botMessage = await sendChatMessageMock(userMessage.content, activeSession);
       setMessages(prev => [...prev, botMessage]);
+      
+      // If we didn't have an active session, this created a new one
+      if (!activeSession && botMessage.sessionId) {
+        setActiveSession(botMessage.sessionId);
+        // Refresh the sessions list in the sidebar
+        const updatedSessions = await fetchChatSessions();
+        setSessions(updatedSessions);
+      }
     } catch (error) {
       const errorMessage = { id: Date.now().toString(), role: "bot", content: "I encountered an error. Please try again." };
       setMessages(prev => [...prev, errorMessage]);
@@ -134,11 +161,9 @@ export default function ChatbotPlaygroundPage() {
                   <div className="flex flex-col gap-1 mt-1">
                     <span className="text-xs font-semibold text-muted-foreground">Sources:</span>
                     {msg.sources.map((source, idx) => (
-                      <div key={idx} className="flex items-center gap-1.5 text-xs bg-white border px-2 py-1 rounded-md text-muted-foreground">
-                        <MessageSquare className="h-3 w-3" />
-                        <span className="font-medium">{source.name}</span>
-                        <span>•</span>
-                        <span>{source.chunk}</span>
+                      <div key={idx} className="flex items-center gap-1.5 text-xs bg-white border px-2 py-1 rounded-md text-muted-foreground max-w-full overflow-hidden text-ellipsis whitespace-nowrap">
+                        <MessageSquare className="h-3 w-3 flex-shrink-0" />
+                        <span className="font-medium truncate">{source.name}</span>
                       </div>
                     ))}
                   </div>

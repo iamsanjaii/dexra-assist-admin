@@ -1,13 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
-import { saveSettingsMock } from "@/services/api";
-
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -27,6 +31,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  getAIConfig,
+  updateAIConfig,
+  getAvailableModels,
+  saveSettingsMock,
+} from "@/services/api";
 
 const formSchema = z.object({
   organizationName: z.string().min(2, "Organization name must be at least 2 characters."),
@@ -38,28 +50,79 @@ const formSchema = z.object({
 
 export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
+  const [modelProvider, setModelProvider] = useState("google");
+  const [availableModels, setAvailableModels] = useState({ google: [], openrouter: [] });
 
   const form = useForm({
     resolver: zodResolver(formSchema),
     defaultValues: {
       organizationName: "Dexra Inc.",
       chatbotName: "Dexra Assist",
-      aiModel: "gpt-4-turbo",
+      aiModel: "gemini-1.5-flash",
       temperature: 0.7,
       theme: "light",
     },
   });
 
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const currentConfig = await getAIConfig();
+        // Map backend struct to frontend form fields
+        form.reset({
+          organizationName: "Dexra Inc.",
+          chatbotName: "Dexra Assist",
+          temperature: 0.7,
+          theme: "light",
+          aiModel: currentConfig.model || "gemini-1.5-flash",
+        });
+        setModelProvider(currentConfig.provider || "google");
+      } catch (error) {
+        toast.error("Failed to fetch AI configuration.");
+      }
+    };
+
+    const fetchModels = async () => {
+      try {
+        const models = await getAvailableModels();
+        setAvailableModels(models);
+      } catch (error) {
+        toast.error("Failed to fetch available models.");
+      }
+    };
+
+    fetchConfig();
+    fetchModels();
+  }, [form]);
+
   const onSubmit = async (values) => {
     setIsSaving(true);
     try {
       await saveSettingsMock(values);
+      
+      // Map frontend form values to backend AIConfig struct
+      const aiConfigPayload = {
+        provider: modelProvider,
+        model: values.aiModel,
+      };
+      
+      await updateAIConfig(aiConfigPayload);
       toast.success("Settings saved successfully.");
     } catch (error) {
       toast.error("Failed to save settings.");
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleProviderChange = (value) => {
+    setModelProvider(value);
+    const firstModel = availableModels[value]?.[0] || "";
+    form.setValue("aiModel", firstModel, { shouldDirty: true });
+  };
+
+  const handleModelChange = (value) => {
+    form.setValue("aiModel", value);
   };
 
   return (
@@ -132,16 +195,18 @@ export default function SettingsPage() {
                 render={({ field }) => (
                   <FormItem className="max-w-md">
                     <FormLabel>AI Model</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select an AI model" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="gpt-4-turbo">GPT-4 Turbo</SelectItem>
-                        <SelectItem value="gpt-3.5-turbo">GPT-3.5 Turbo</SelectItem>
-                        <SelectItem value="claude-3-opus">Claude 3 Opus</SelectItem>
+                        {availableModels[modelProvider]?.map((model) => (
+                          <SelectItem key={model} value={model}>
+                            {model}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -176,6 +241,36 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
+          {/* Model Provider Settings */}
+          <Card className="border-border/50">
+            <CardHeader>
+              <CardTitle>AI Model Provider</CardTitle>
+              <CardDescription>
+                Select the provider for the AI model.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4">
+                <p className="text-sm text-muted-foreground">
+                  Choose the AI model provider for the chatbot.
+                </p>
+                <RadioGroup
+                  value={modelProvider}
+                  onValueChange={handleProviderChange}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="google" id="google" />
+                    <Label htmlFor="google">Google Gemini</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="openrouter" id="openrouter" />
+                    <Label htmlFor="openrouter">OpenRouter</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Appearance Settings */}
           <Card className="border-border/50">
             <CardHeader>
@@ -191,7 +286,7 @@ export default function SettingsPage() {
                 render={({ field }) => (
                   <FormItem className="max-w-md">
                     <FormLabel>Theme</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled>
+                    <Select onValueChange={field.onChange} value={field.value} disabled>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a theme" />

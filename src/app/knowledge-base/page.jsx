@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 import { fetchDocuments, uploadDocumentMock, deleteDocumentMock } from "@/services/api";
@@ -13,64 +13,120 @@ import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/EmptyState";
 
+// Animated progress bar shown while a document is being processed
+function ProcessingProgress({ processed, total }) {
+  const pct = total > 0 ? Math.round((processed / total) * 100) : 0;
+  return (
+    <div className="flex flex-col gap-1 min-w-[140px]">
+      <div className="flex items-center justify-between text-xs text-muted-foreground">
+        <span className="font-medium text-yellow-500 dark:text-yellow-400">Processing…</span>
+        <span>
+          {processed}/{total} chunks
+        </span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-yellow-400 to-orange-500 transition-all duration-500"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function KnowledgeBasePage() {
   const [documents, setDocuments] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const pollRef = useRef(null);
 
-  const loadDocuments = async () => {
-    setIsLoading(true);
+  const loadDocuments = useCallback(async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const data = await fetchDocuments();
       setDocuments(data);
+      return data;
     } catch (err) {
-      toast.error("Failed to load documents.");
+      if (!silent) toast.error("Failed to load documents.");
+      return [];
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadDocuments();
   }, []);
 
-  const onDrop = useCallback(async (acceptedFiles) => {
-    if (acceptedFiles.length === 0) return;
-    
+  // Start / stop polling based on whether any doc is still processing
+  const managePoll = useCallback((docs) => {
+    const hasProcessing = docs.some((d) => d.processing_status === "processing");
+
+    if (hasProcessing && !pollRef.current) {
+      pollRef.current = setInterval(async () => {
+        const updated = await loadDocuments(true);
+        const stillProcessing = updated.some((d) => d.processing_status === "processing");
+        if (!stillProcessing) {
+          clearInterval(pollRef.current);
+          pollRef.current = null;
+          toast.success("Document processing complete!");
+        }
+      }, 3000);
+    } else if (!hasProcessing && pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  }, [loadDocuments]);
+
+  useEffect(() => {
+    loadDocuments().then(managePoll);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
+  }, [loadDocuments, managePoll]);
+
+  // Re-evaluate polling whenever docs change
+  useEffect(() => {
+    managePoll(documents);
+  }, [documents, managePoll]);
+
+  const onDrop = useCallback(async (acceptedFiles, rejectedFiles) => {
+    if (acceptedFiles.length === 0) {
+      if (rejectedFiles.length > 0) {
+        toast.error(`File rejected: ${rejectedFiles[0].errors[0].message}`);
+      }
+      return;
+    }
+
     setIsUploading(true);
-    const toastId = toast.loading("Uploading document...");
-    
+    const toastId = toast.loading("Uploading document…");
+
     try {
-      // Simulate uploading first file
       await uploadDocumentMock(acceptedFiles[0]);
-      toast.success("Document uploaded successfully.", { id: toastId });
-      // Reload documents
-      await loadDocuments();
+      toast.success("Document uploaded! Processing started.", { id: toastId });
+      const data = await loadDocuments(true);
+      setDocuments(data);
     } catch (err) {
       toast.error("Failed to upload document.", { id: toastId });
     } finally {
       setIsUploading(false);
     }
-  }, []);
+  }, [loadDocuments]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ 
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf'],
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-      'text/csv': ['.csv'],
-      'text/plain': ['.txt'],
+      "application/pdf": [".pdf"],
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"],
+      "text/csv": [".csv"],
+      "text/plain": [".txt"],
     },
-    disabled: isUploading
+    disabled: isUploading,
   });
 
   const handleDelete = async (id) => {
     try {
       await deleteDocumentMock(id);
       toast.success("Document deleted successfully.");
-      setDocuments(docs => docs.filter(doc => doc.id !== id));
+      setDocuments((docs) => docs.filter((doc) => doc.id !== id));
     } catch (err) {
       toast.error("Failed to delete document.");
     }
@@ -78,21 +134,42 @@ export default function KnowledgeBasePage() {
 
   const columns = [
     {
-      accessorKey: "name",
+      accessorKey: "filename",
       header: "File Name",
     },
     {
-      accessorKey: "type",
+      accessorKey: "file_type",
       header: "File Type",
     },
     {
-      accessorKey: "date",
+      accessorKey: "created_at",
       header: "Upload Date",
+      cell: ({ row }) => new Date(row.getValue("created_at")).toLocaleDateString(),
     },
     {
-      accessorKey: "status",
-      header: "Processing Status",
-      cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+      accessorKey: "processing_status",
+      header: "Status",
+      cell: ({ row }) => {
+        const doc = row.original;
+        if (doc.processing_status === "processing") {
+          return (
+            <ProcessingProgress
+              processed={doc.processed_chunks ?? 0}
+              total={doc.chunk_count ?? 0}
+            />
+          );
+        }
+        return <StatusBadge status={doc.processing_status} />;
+      },
+    },
+    {
+      accessorKey: "chunk_count",
+      header: "Chunks",
+      cell: ({ row }) => {
+        const doc = row.original;
+        if (doc.processing_status === "ready") return doc.chunk_count;
+        return "—";
+      },
     },
     {
       id: "actions",
@@ -104,9 +181,9 @@ export default function KnowledgeBasePage() {
             <Button variant="ghost" size="icon" title="View">
               <Eye className="h-4 w-4 text-muted-foreground" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               title="Delete"
               onClick={() => handleDelete(doc.id)}
             >
@@ -115,11 +192,11 @@ export default function KnowledgeBasePage() {
           </div>
         );
       },
-    }
+    },
   ];
 
-  const filteredDocuments = documents.filter(doc => 
-    doc.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredDocuments = documents.filter((doc) =>
+    doc.filename?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -127,17 +204,15 @@ export default function KnowledgeBasePage() {
       <Card className="border-border/50">
         <CardHeader>
           <CardTitle>Upload Knowledge Source</CardTitle>
-          <CardDescription>
-            Supported formats: PDF, DOCX, XLSX, CSV, TXT
-          </CardDescription>
+          <CardDescription>Supported formats: PDF, DOCX, XLSX, CSV, TXT</CardDescription>
         </CardHeader>
         <CardContent>
-          <div 
-            {...getRootProps()} 
+          <div
+            {...getRootProps()}
             className={`
               flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-lg transition-colors cursor-pointer
-              ${isDragActive ? 'border-primary bg-primary/5' : 'border-border hover:bg-muted/50'}
-              ${isUploading ? 'opacity-50 pointer-events-none' : ''}
+              ${isDragActive ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"}
+              ${isUploading ? "opacity-50 pointer-events-none" : ""}
             `}
           >
             <input {...getInputProps()} />
@@ -145,7 +220,7 @@ export default function KnowledgeBasePage() {
               <UploadCloud className="h-8 w-8 text-primary" />
             </div>
             <h3 className="text-lg font-semibold">
-              {isDragActive ? 'Drop files here' : 'Drag & drop files here'}
+              {isDragActive ? "Drop files here" : "Drag & drop files here"}
             </h3>
             <p className="text-sm text-muted-foreground mt-2">
               or click to browse from your computer
@@ -184,9 +259,13 @@ export default function KnowledgeBasePage() {
           ) : filteredDocuments.length > 0 ? (
             <DataTable columns={columns} data={filteredDocuments} />
           ) : (
-            <EmptyState 
-              title="No documents found" 
-              description={searchQuery ? "No documents match your search query." : "Upload your first knowledge source to begin training the chatbot."}
+            <EmptyState
+              title="No documents found"
+              description={
+                searchQuery
+                  ? "No documents match your search query."
+                  : "Upload your first knowledge source to begin training the chatbot."
+              }
             />
           )}
         </CardContent>

@@ -1,143 +1,234 @@
-// This file contains all API calls. In the future, these will be replaced with real endpoints.
+import { apiInit } from '../api/apiInit';
 
+const api = apiInit();
+
+// Add a request interceptor to dynamically inject the JWT token
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
+// Add a response interceptor to handle 401 Unauthorized globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
+// ----------------------------------------------------------------------
+// Dashboard
+// ----------------------------------------------------------------------
 export const fetchDashboardStats = async () => {
-  // GET /api/dashboard/stats
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        totalDocuments: 124,
-        totalQAPairs: 856,
-        totalConversations: 3420,
-        activeKnowledgeSources: 12,
-      });
-    }, 800);
-  });
+  try {
+    const { data } = await api.get('/dashboard/stats');
+    return data.stats;
+  } catch (error) {
+    console.error(error);
+    return {
+      totalDocuments: 0,
+      totalQAPairs: 0,
+      totalConversations: 0,
+      activeKnowledgeSources: 0,
+    };
+  }
 };
 
 export const fetchRecentUploads = async () => {
-  // GET /api/documents/recent
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, name: "Employee_Handbook.pdf", type: "PDF", date: "2024-05-12", status: "Ready" },
-        { id: 2, name: "Q1_Financial_Report.xlsx", type: "XLSX", date: "2024-05-10", status: "Processing" },
-        { id: 3, name: "Company_Policies.docx", type: "DOCX", date: "2024-05-09", status: "Ready" },
-        { id: 4, name: "Support_Logs_April.csv", type: "CSV", date: "2024-05-08", status: "Failed" },
-      ]);
-    }, 600);
-  });
+  try {
+    const { data } = await api.get('/documents');
+    return data.data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
 export const fetchActivityFeed = async () => {
-  // GET /api/dashboard/activity
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, action: "Uploaded", item: "Employee_Handbook.pdf", time: "2 hours ago" },
-        { id: 2, action: "Updated", item: "Q&A: Reset Password", time: "5 hours ago" },
-        { id: 3, action: "Deleted", item: "Old_Policies_2023.pdf", time: "1 day ago" },
-      ]);
-    }, 500);
-  });
+  return [
+    { id: 1, action: "Logged in via Google", item: "Admin", time: "Just now" },
+  ];
 };
 
+// ----------------------------------------------------------------------
+// Knowledge Base
+// ----------------------------------------------------------------------
 export const fetchDocuments = async () => {
-  // GET /api/documents
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, name: "Employee_Handbook.pdf", type: "PDF", size: "2.4 MB", date: "2024-05-12", status: "Ready" },
-        { id: 2, name: "Q1_Financial_Report.xlsx", type: "XLSX", size: "1.1 MB", date: "2024-05-10", status: "Processing" },
-        { id: 3, name: "Company_Policies.docx", type: "DOCX", size: "540 KB", date: "2024-05-09", status: "Ready" },
-        { id: 4, name: "Support_Logs_April.csv", type: "CSV", size: "12 MB", date: "2024-05-08", status: "Failed" },
-      ]);
-    }, 600);
-  });
+  try {
+    const { data } = await api.get('/documents');
+    return data.data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
 export const uploadDocumentMock = async (file) => {
-  // POST /api/documents/upload
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: "Document uploaded successfully." });
-    }, 1500);
-  });
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const { data } = await api.post('/documents/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return data;
+  } catch (error) {
+    console.error("Upload error:", error);
+    throw error;
+  }
 };
 
 export const deleteDocumentMock = async (id) => {
-  // DELETE /api/documents/:id
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, message: "Document deleted successfully." });
-    }, 500);
-  });
+  try {
+    const { data } = await api.delete(`/documents/${id}`);
+    return data;
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.message };
+  }
 };
 
+// ----------------------------------------------------------------------
+// Q&A Management
+// ----------------------------------------------------------------------
 export const fetchQAPairs = async () => {
-  // GET /api/qa
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, question: "How do I reset my password?", answer: "Go to settings > security and click 'Reset Password'. A link will be sent to your email.", date: "2024-05-11" },
-        { id: 2, question: "What are your business hours?", answer: "We are open Monday to Friday, from 9 AM to 6 PM EST.", date: "2024-05-10" },
-        { id: 3, question: "Do you offer refunds?", answer: "Yes, we offer a 30-day money-back guarantee for all new subscriptions.", date: "2024-05-09" },
-      ]);
-    }, 600);
-  });
+  try {
+    const { data } = await api.get('/qa');
+    return data.data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
-export const saveQAPairMock = async (data) => {
-  // POST /api/qa or PUT /api/qa/:id
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, id: data.id || Date.now(), ...data });
-    }, 800);
-  });
+export const saveQAPairMock = async (qaData) => {
+  try {
+    let response;
+    if (qaData.id) {
+      response = await api.put(`/qa/${qaData.id}`, qaData);
+    } else {
+      response = await api.post('/qa', qaData);
+    }
+    // For POST, the new object is in response.data.data
+    // For PUT, the backend just returns success, so we return the updated payload
+    if (response.data.data) {
+      return response.data.data;
+    }
+    return qaData;
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.message };
+  }
 };
 
 export const deleteQAPairMock = async (id) => {
-  // DELETE /api/qa/:id
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true });
-    }, 500);
-  });
+  try {
+    const { data } = await api.delete(`/qa/${id}`);
+    return data;
+  } catch (error) {
+    console.error(error);
+    return { success: false, message: error.message };
+  }
 };
 
+// ----------------------------------------------------------------------
+// Chat Playground
+// ----------------------------------------------------------------------
 export const fetchChatSessions = async () => {
-  // GET /api/chat/sessions
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve([
-        { id: 1, title: "Onboarding query", time: "10 mins ago" },
-        { id: 2, title: "Password reset help", time: "2 hours ago" },
-        { id: 3, title: "Billing issues", time: "1 day ago" },
-      ]);
-    }, 500);
-  });
+  try {
+    const { data } = await api.get('/chat/sessions');
+    return data.data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
-export const sendChatMessageMock = async (message) => {
-  // POST /api/chat/message
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id: Date.now(),
-        role: "bot",
-        content: `Here is a simulated response to: "${message}".\n\nI found relevant information in the **Employee Handbook**.\n\nPlease let me know if you need anything else!`,
-        sources: [
-          { name: "Employee_Handbook.pdf", chunk: "Section 3.2 - Onboarding" }
-        ]
+export const fetchChatHistory = async (sessionId) => {
+  try {
+    const { data } = await api.get(`/chat/history/${sessionId}`);
+    return data.data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
+};
+
+export const sendChatMessageMock = async (message, sessionId = null) => {
+  try {
+    let sid = sessionId;
+    if (!sid) {
+      const sessionRes = await api.post('/chat/session', { 
+        title: message.substring(0, 30) + '...' 
       });
-    }, 1500); // simulate some thinking time
-  });
+      sid = sessionRes.data.data.id;
+    }
+
+    const { data } = await api.post('/chat/query', {
+      session_id: sid,
+      message: message
+    });
+    
+    return {
+      id: Date.now(), 
+      role: 'bot',
+      content: data.response,
+      sources: data.sources || [],
+      sessionId: sid 
+    };
+  } catch (error) {
+    console.error(error);
+    return { id: Date.now(), role: 'bot', content: 'An error occurred while fetching the response.', sources: [] };
+  }
+};
+
+// ----------------------------------------------------------------------
+// Settings
+// ----------------------------------------------------------------------
+export const getAIConfig = async () => {
+  try {
+    const { data } = await api.get('/config');
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const updateAIConfig = async (config) => {
+  try {
+    const { data } = await api.put('/config', config);
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
+};
+
+export const getAvailableModels = async () => {
+  try {
+    const { data } = await api.get('/models');
+    return data;
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 };
 
 export const saveSettingsMock = async (settings) => {
-  // PUT /api/settings
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({ success: true, settings });
-    }, 800);
-  });
+  return { success: true };
 };

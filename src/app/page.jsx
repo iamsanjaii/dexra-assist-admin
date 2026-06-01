@@ -1,5 +1,20 @@
-import { redirect } from "next/navigation";
+'use client';
+
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuthStore } from "@/store/authStore";
 
 export default function Home() {
-  redirect("/dashboard");
+  const router = useRouter();
+  const token = useAuthStore((state) => state.token);
+
+  useEffect(() => {
+    if (token) {
+      router.push("/dashboard");
+    } else {
+      router.push("/login");
+    }
+  }, [token, router]);
+
+  return <div className="h-screen w-full bg-background flex items-center justify-center">Loading...</div>;
 }

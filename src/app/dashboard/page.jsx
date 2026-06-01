@@ -12,21 +12,22 @@ export default function DashboardPage() {
 
   const columns = [
     {
-      accessorKey: "name",
+      accessorKey: "filename",
       header: "File Name",
     },
     {
-      accessorKey: "type",
+      accessorKey: "file_type",
       header: "Type",
     },
     {
-      accessorKey: "date",
+      accessorKey: "created_at",
       header: "Upload Date",
+      cell: ({ row }) => new Date(row.getValue("created_at")).toLocaleDateString(),
     },
     {
-      accessorKey: "status",
+      accessorKey: "processing_status",
       header: "Status",
-      cell: ({ row }) => <StatusBadge status={row.getValue("status")} />,
+      cell: ({ row }) => <StatusBadge status={row.getValue("processing_status")} />,
     },
   ];
 

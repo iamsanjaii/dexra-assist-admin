@@ -11,8 +11,7 @@ export const metadata = {
   description: "A Product by Dexra",
 };
 
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopNavigation } from "@/components/layout/TopNavigation";
+import { AppWrapper } from "@/components/layout/AppWrapper";
 import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({ children }) {
@@ -22,15 +21,9 @@ export default function RootLayout({ children }) {
       className={`${inter.variable} h-full antialiased`}
     >
       <body className="h-screen flex overflow-hidden bg-background text-foreground">
-        <Sidebar />
-        <div className="flex flex-col flex-1 min-w-0">
-          <TopNavigation />
-          <main className="flex-1 overflow-y-auto bg-muted/20">
-            <div className="mx-auto w-full p-6">
-              {children}
-            </div>
-          </main>
-        </div>
+        <AppWrapper>
+          {children}
+        </AppWrapper>
         <Toaster position="top-right" richColors closeButton />
       </body>
     </html>

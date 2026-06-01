@@ -13,6 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
 
 const getPageTitle = (pathname) => {
   if (pathname.startsWith("/dashboard")) return "Dashboard";
@@ -26,6 +28,13 @@ const getPageTitle = (pathname) => {
 export function TopNavigation() {
   const pathname = usePathname();
   const pageTitle = getPageTitle(pathname);
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background px-6">
@@ -49,19 +58,20 @@ export function TopNavigation() {
         </Button>
         
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary/10 text-primary">A</AvatarFallback>
-              </Avatar>
-            </Button>
+          <DropdownMenuTrigger className="relative h-8 w-8 rounded-full focus:outline-none">
+            <Avatar className="h-8 w-8 hover:opacity-80 transition-opacity">
+              <AvatarImage src={user?.picture} />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "A"}
+              </AvatarFallback>
+            </Avatar>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Admin User</p>
+                <p className="text-sm font-medium leading-none">{user?.name || "Admin User"}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  admin@dexraassist.com
+                  {user?.email || "admin@dexra.ai"}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -69,7 +79,7 @@ export function TopNavigation() {
             <DropdownMenuItem>Profile</DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">Log out</DropdownMenuItem>
+            <DropdownMenuItem className="text-destructive cursor-pointer" onClick={handleLogout}>Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

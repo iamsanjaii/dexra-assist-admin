@@ -8,8 +8,12 @@ import {
   MessageSquareText,
   Bot,
   Settings,
+  LogOut,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuthStore } from "@/store/authStore";
+import { useRouter } from "next/navigation";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navigation = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -21,6 +25,13 @@ const navigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
 
   return (
     <div className="flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
@@ -55,12 +66,25 @@ export function Sidebar() {
         })}
       </nav>
       <div className="p-4 border-t mt-auto">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
-            A
+        <div className="flex items-center gap-3 mb-4">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={user?.picture} />
+            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+              {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "A"}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex flex-col min-w-0">
+            <span className="text-sm font-medium truncate">{user?.name || "Admin User"}</span>
+            <span className="text-xs text-muted-foreground truncate">{user?.email || "admin@dexra.ai"}</span>
           </div>
-          <div className="text-sm font-medium">Admin User</div>
         </div>
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center rounded-md px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors"
+        >
+          <LogOut className="mr-3 h-5 w-5 flex-shrink-0" aria-hidden="true" />
+          Log out
+        </button>
       </div>
     </div>
   );

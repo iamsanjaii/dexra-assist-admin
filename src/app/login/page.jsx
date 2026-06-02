@@ -7,16 +7,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center space-y-8 max-w-md w-full px-6 py-12 bg-card rounded-2xl shadow-xl border border-border">
-      <div className="text-center space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-primary">Dexra Assist</h1>
-        <p className="text-muted-foreground">Sign in to manage your AI knowledge base</p>
+    <div className="w-full h-full flex flex-col px-6 py-8 bg-[#F8F8FA]">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <img src="/illustrations.jpg" alt="Illustration" className="w-full max-w-[600px] max-h-[50vh] object-contain mb-8" />
+        <div className="text-center space-y-2 shrink-0">
+          <h1 className="text-3xl font-bold tracking-tight text-primary">Dexra <span className="text-black">Assist</span></h1>
+          <p className="text-muted-foreground">Sign in to manage your AI knowledge base</p>
+        </div>
       </div>
 
-      <div className="w-full flex justify-center py-4">
+      <div className="w-full flex flex-col items-center shrink-0 pt-4">
         <button
           onClick={handleLogin}
-          className="flex items-center justify-center gap-3 w-full max-w-[280px] bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 font-medium px-4 py-3 rounded-md shadow-sm transition-colors"
+          className="flex items-center justify-center gap-3 w-full max-w-[320px] bg-white text-slate-700 hover:bg-slate-50 border border-slate-200 font-medium px-4 py-4 rounded-lg transition-colors"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
@@ -38,11 +41,11 @@ export default function LoginPage() {
           </svg>
           Continue with Google
         </button>
+        
+        <p className="text-xs text-center text-muted-foreground mt-6">
+          By signing in, you agree to our Terms of Service and Privacy Policy.
+        </p>
       </div>
-      
-      <p className="text-xs text-center text-muted-foreground mt-8">
-        By signing in, you agree to our Terms of Service and Privacy Policy.
-      </p>
     </div>
   );
 }

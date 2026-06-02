@@ -34,14 +34,20 @@ api.interceptors.response.use(
 export const fetchDashboardStats = async () => {
   try {
     const { data } = await api.get('/dashboard/stats');
-    return data.stats;
+    return {
+      stats: data.stats,
+      aiAnalytics: data.aiAnalytics
+    };
   } catch (error) {
     console.error(error);
     return {
-      totalDocuments: 0,
-      totalQAPairs: 0,
-      totalConversations: 0,
-      activeKnowledgeSources: 0,
+      stats: {
+        totalDocuments: 0,
+        totalQAPairs: 0,
+        totalConversations: 0,
+        activeKnowledgeSources: 0,
+      },
+      aiAnalytics: null
     };
   }
 };
@@ -57,9 +63,13 @@ export const fetchRecentUploads = async () => {
 };
 
 export const fetchActivityFeed = async () => {
-  return [
-    { id: 1, action: "Logged in via Google", item: "Admin", time: "Just now" },
-  ];
+  try {
+    const { data } = await api.get('/dashboard/activity');
+    return data.data || [];
+  } catch (error) {
+    console.error(error);
+    return [];
+  }
 };
 
 // ----------------------------------------------------------------------

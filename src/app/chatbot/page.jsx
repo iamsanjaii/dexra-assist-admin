@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Send, Bot, User, MessageSquare } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 export default function ChatbotPlaygroundPage() {
   const [sessions, setSessions] = useState([]);
@@ -128,7 +129,7 @@ export default function ChatbotPlaygroundPage() {
       <Card className="flex-1 flex flex-col overflow-hidden border-border/50">
         <div className="p-4 border-b bg-muted/20 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
+            <img src="/dexra-assist.png" alt="Dexra Assistant" className="h-6 w-6 object-contain" />
             <h3 className="font-semibold">Dexra Assistant Test</h3>
           </div>
         </div>
@@ -142,10 +143,10 @@ export default function ChatbotPlaygroundPage() {
               key={msg.id} 
               className={`flex gap-4 max-w-[80%] ${msg.role === 'user' ? 'ml-auto flex-row-reverse' : ''}`}
             >
-              <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-                msg.role === 'user' ? 'bg-primary/20 text-primary' : 'bg-primary text-primary-foreground'
+              <div className={`flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center overflow-hidden ${
+                msg.role === 'user' ? 'bg-primary/20 text-primary' : 'bg-transparent'
               }`}>
-                {msg.role === 'user' ? <User className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+                {msg.role === 'user' ? <User className="h-5 w-5" /> : <img src="/dexra-assist.png" alt="Bot" className="h-8 w-8 object-contain" />}
               </div>
               
               <div className={`flex flex-col gap-2 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -154,7 +155,13 @@ export default function ChatbotPlaygroundPage() {
                     ? 'bg-primary text-primary-foreground rounded-tr-none' 
                     : 'bg-white border text-foreground rounded-tl-none whitespace-pre-wrap'
                 }`}>
-                  {msg.content}
+                  {msg.role === 'user' ? (
+                    msg.content
+                  ) : (
+                    <div className="prose prose-sm max-w-none prose-p:leading-relaxed prose-pre:bg-gray-50 prose-pre:border prose-pre:border-gray-200">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  )}
                 </div>
                 
                 {msg.sources && msg.sources.length > 0 && (
@@ -174,8 +181,8 @@ export default function ChatbotPlaygroundPage() {
           
           {isTyping && (
             <div className="flex gap-4 max-w-[80%]">
-              <div className="flex-shrink-0 h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
-                <Bot className="h-5 w-5" />
+              <div className="flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center overflow-hidden bg-transparent">
+                <img src="/dexra-assist.png" alt="Bot" className="h-8 w-8 object-contain" />
               </div>
               <div className="bg-white border rounded-2xl rounded-tl-none px-4 py-3 flex items-center gap-1">
                 <div className="w-1.5 h-1.5 bg-primary/40 rounded-full animate-bounce [animation-delay:-0.3s]"></div>

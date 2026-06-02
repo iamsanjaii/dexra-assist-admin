@@ -5,6 +5,7 @@ import { fetchDashboardStats, fetchRecentUploads, fetchActivityFeed } from "@/se
 
 export function useDashboard() {
   const [stats, setStats] = useState(null);
+  const [aiAnalytics, setAiAnalytics] = useState(null);
   const [recentUploads, setRecentUploads] = useState([]);
   const [activityFeed, setActivityFeed] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -19,7 +20,8 @@ export function useDashboard() {
           fetchRecentUploads(),
           fetchActivityFeed(),
         ]);
-        setStats(statsData);
+        setStats(statsData.stats);
+        setAiAnalytics(statsData.aiAnalytics);
         setRecentUploads(uploadsData);
         setActivityFeed(activityData);
       } catch (err) {
@@ -33,5 +35,5 @@ export function useDashboard() {
     loadDashboardData();
   }, []);
 
-  return { stats, recentUploads, activityFeed, isLoading, error };
+  return { stats, aiAnalytics, recentUploads, activityFeed, isLoading, error };
 }

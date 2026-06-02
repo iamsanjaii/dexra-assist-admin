@@ -35,7 +35,8 @@ export function Sidebar() {
 
   return (
     <div className="flex w-64 flex-col border-r bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center border-b px-6">
+      <div className="flex h-16 items-center border-b px-6 gap-2">
+        <img src="/dexra-assist.png" alt="Dexra Assist" className="h-8 w-8 object-contain" />
         <span className="text-xl font-bold tracking-tight text-primary">Dexra Assist</span>
       </div>
       <nav className="flex-1 space-y-1 p-4 overflow-y-auto">

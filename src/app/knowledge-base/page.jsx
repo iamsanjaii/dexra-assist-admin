@@ -178,7 +178,16 @@ export default function KnowledgeBasePage() {
         const doc = row.original;
         return (
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon" title="View">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              title="View" 
+              onClick={() => {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:9000/api/v1";
+                const baseUrl = apiUrl.replace(/\/api\/v1\/?$/, "");
+                window.open(`${baseUrl}/${doc.storage_path}`, "_blank");
+              }}
+            >
               <Eye className="h-4 w-4 text-muted-foreground" />
             </Button>
             <Button
